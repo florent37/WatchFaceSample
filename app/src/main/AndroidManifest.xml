@@ -1,0 +1,59 @@
+<manifest
+    package="fr.xebia.mywatchface"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature android:name="android.hardware.type.watch"/>
+
+    <!-- Required to act as a custom watch face. -->
+    <uses-permission android:name="com.google.android.permission.PROVIDE_BACKGROUND" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:theme="@android:style/Theme.DeviceDefault"
+        tools:ignore="MissingApplicationIcon">
+
+
+        <!-- http://developer.android.com/reference/android/service/wallpaper/WallpaperService.html
+
+             The Intent that must be declared as handled by the service.
+             To be supported, the service must also require the BIND_WALLPAPER permission so that other applications can not abuse it.
+             Constant Value: "android.service.wallpaper.WallpaperService"
+            -->
+        <service
+            android:name=".MyWatchFaceService"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_WALLPAPER">
+
+            <!--
+                Name under which a WallpaperService component publishes information about itself.
+                This meta-data must reference an XML resource containing a <wallpaper> tag. -->
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/watch_face"/>
+
+            <!-- 320*320 -->
+            <meta-data
+                android:name="com.google.android.wearable.watchface.preview"
+                android:resource="@drawable/preview"/>
+
+            <!-- 320*320 -->
+            <meta-data
+                android:name="com.google.android.wearable.watchface.preview_circular"
+                android:resource="@drawable/preview"/>
+
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService"/>
+                <category android:name="com.google.android.wearable.watchface.category.WATCH_FACE"/>
+            </intent-filter>
+        </service>
+
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version"/>
+
+    </application>
+
+</manifest>
