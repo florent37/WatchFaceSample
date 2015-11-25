@@ -212,6 +212,15 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             final float minutesAngle = time.minute * 6f;
             final float hourAngle = (time.hour + time.minute / 60f) * 30f;
 
+            for(int i=0;i<=11;i++){
+                canvas.save();
+                {
+                    canvas.rotate(360/12*i, centerX, centerY);
+                    canvas.drawRect(centerX - 1, height*0.85f,centerX+1,height*0.9f,handPaintSeconds);
+                }
+                canvas.restore();
+            }
+
             canvas.save();
             {
                 canvas.rotate(hourAngle, centerX, centerY);
