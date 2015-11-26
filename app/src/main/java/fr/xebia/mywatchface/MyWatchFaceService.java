@@ -1,18 +1,24 @@
 package fr.xebia.mywatchface;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
-import android.text.format.Time;
 import android.view.SurfaceHolder;
+
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.TimeZone;
 
 /**
  * Created by florentchampigny on 25/11/2015.
@@ -21,7 +27,13 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
 
     static final long UPDATE_RATE_MS = 1000; //each second
 
-    protected class AbstractEngine extends CanvasWatchFaceService.Engine {
+    @Override public Engine onCreateEngine() {
+        return new MyEngine();
+    }
+
+    protected class MyEngine extends CanvasWatchFaceService.Engine {
+        protected Calendar calendar;
+
         boolean isRunning = false;
         Handler updateHandler = new Handler() {
             @Override public void handleMessage(Message msg) {
@@ -37,16 +49,41 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             }
         };
 
-        protected Time time;
         //region background
         protected Paint backgroundPaint;
         protected Bitmap backgroundBitmap;
-        //endregion
+        protected int colorBackground;
         protected float backgroundScale;
+        //endregion
+
         //region surface
         protected int width, height;
         protected float centerX, centerY;
         //endregion
+
+        //region hands
+        Paint handPaintHours;
+        Paint handPaintMinutes;
+        Paint handPaintSeconds;
+
+        float HAND_WIDTH_HOURS = 4f;
+        float HAND_WIDTH_MINUTES = 2f;
+        float HAND_WIDTH_SECONDS = 1f;
+
+        float handHourHeight;
+        float handMinuteHeight;
+        float handSecondHeight;
+        //endregion
+
+        boolean registeredTimeZoneReceiver;
+        // receiver to update the time zone
+        final BroadcastReceiver timeZoneReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                calendar.setTimeZone(TimeZone.getDefault());
+                invalidate();
+            }
+        };
 
         @Override public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
@@ -61,104 +98,9 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             //region background
             backgroundPaint = new Paint();
             backgroundPaint.setColor(Color.BLUE);
-            backgroundBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.background);
+            backgroundBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.one);
+            colorBackground = Color.parseColor("#66000000");
             //endregion
-
-            time = new Time();
-        }
-
-        @Override public void onDestroy() {
-            super.onDestroy();
-            updateHandler.removeMessages(R.id.message_update);
-        }
-
-        @Override
-        public void onSurfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-            super.onSurfaceChanged(holder, format, width, height);
-
-            this.width = width;
-            this.height = height;
-            this.centerX = width / 2f;
-            this.centerY = height / 2f;
-
-            //region background
-            this.backgroundScale = ((float) (width)) / (float) backgroundBitmap.getWidth();
-            this.backgroundBitmap = Bitmap.createScaledBitmap(this.backgroundBitmap,
-                    (int) (backgroundScale * (this.backgroundBitmap.getWidth())),
-                    (int) (backgroundScale * (this.backgroundBitmap.getHeight())),
-                    true);
-            //endregion
-        }
-
-        @Override public void onTimeTick() {
-            super.onTimeTick();
-            invalidate();
-        }
-
-        //region ambiant
-        @Override public void onAmbientModeChanged(boolean inAmbientMode) {
-            super.onAmbientModeChanged(inAmbientMode);
-        }
-
-        @Override public void onPropertiesChanged(Bundle properties) {
-            super.onPropertiesChanged(properties);
-        }
-        //endregion
-
-        @Override public void onVisibilityChanged(boolean visible) {
-            super.onVisibilityChanged(visible);
-
-            isRunning = visible;
-
-            if (isRunning) {
-                time.setToNow();
-                updateTimer();
-            }
-        }
-
-        @Override public void onDraw(Canvas canvas, Rect bounds) {
-            super.onDraw(canvas, bounds);
-            time.setToNow();
-
-            //region background
-            canvas.drawBitmap(this.backgroundBitmap, 0, 0, backgroundPaint);
-            //endregion
-        }
-
-        private void updateTimer() {
-            updateHandler.removeMessages(R.id.message_update);
-            if (isRunning) {
-                updateHandler.sendEmptyMessage(R.id.message_update);
-            }
-        }
-    }
-
-    protected class CadranEngine extends AbstractEngine {
-        float HAND_WIDTH_HOURS = 4f;
-        float HAND_WIDTH_MINUTES = 2f;
-        float HAND_WIDTH_SECONDS = 1f;
-        float HAND_WIDTH = 4f;
-
-        //region hand
-        Paint handPaintHours;
-        Paint handPaintMinutes;
-        Paint handPaintSeconds;
-
-        float handHourHeight;
-        float handMinuteHeight;
-        float handSecondHeight;
-        //endregion
-
-        protected void drawHand(Canvas canvas, float height, float width, Paint paint) {
-            float left = centerX - width;
-            float right = centerX + width;
-            float top = centerY - height;
-            float bottom = centerY + width;
-            canvas.drawRoundRect(left, top, right, bottom, width, width, paint);
-        }
-
-        @Override public void onCreate(SurfaceHolder holder) {
-            super.onCreate(holder);
 
             //region hand
             handPaintHours = new Paint();
@@ -185,11 +127,31 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             handPaintSeconds.setShadowLayer(6f, 0, 0, Color.BLACK);
             handPaintSeconds.setStyle(Paint.Style.FILL);
             //endregion
+
+            calendar = new GregorianCalendar();
+        }
+
+        @Override public void onDestroy() {
+            super.onDestroy();
+            updateHandler.removeMessages(R.id.message_update);
         }
 
         @Override
         public void onSurfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             super.onSurfaceChanged(holder, format, width, height);
+
+            this.width = width;
+            this.height = height;
+            this.centerX = width / 2f;
+            this.centerY = height / 2f;
+
+            //region background
+            this.backgroundScale = ((float) (width)) / (float) backgroundBitmap.getWidth();
+            this.backgroundBitmap = Bitmap.createScaledBitmap(this.backgroundBitmap,
+                    (int) (backgroundScale * (this.backgroundBitmap.getWidth())),
+                    (int) (backgroundScale * (this.backgroundBitmap.getHeight())),
+                    true);
+            //endregion
 
             //region hand
             handHourHeight = centerX * 0.3f;
@@ -198,8 +160,50 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             //endregion
         }
 
+        //Called periodically to update the time shown by the watch face (each minute)
+        @Override public void onTimeTick() {
+            super.onTimeTick();
+            invalidate();
+        }
+
+        @Override public void onVisibilityChanged(boolean visible) {
+            super.onVisibilityChanged(visible);
+            isRunning = visible;
+
+            if (isRunning) {
+                registerReceiver();
+
+                // Update time zone in case it changed while we weren't visible.
+                calendar.setTimeZone(TimeZone.getDefault());
+
+                updateTimer();
+            } else {
+                unregisterReceiver();
+            }
+        }
+
+        private void registerReceiver() {
+            if (!registeredTimeZoneReceiver) {
+                registeredTimeZoneReceiver = true;
+                MyWatchFaceService.this.registerReceiver(timeZoneReceiver, new IntentFilter(Intent.ACTION_TIMEZONE_CHANGED));
+            }
+        }
+
+        private void unregisterReceiver() {
+            if (registeredTimeZoneReceiver) {
+                registeredTimeZoneReceiver = false;
+                MyWatchFaceService.this.unregisterReceiver(timeZoneReceiver);
+            }
+        }
+
         @Override public void onDraw(Canvas canvas, Rect bounds) {
             super.onDraw(canvas, bounds);
+            calendar.setTimeInMillis(System.currentTimeMillis());
+
+            //region background
+            canvas.drawBitmap(this.backgroundBitmap, 0, 0, backgroundPaint);
+            canvas.drawColor(colorBackground);
+            //endregion
 
             //region hand
 
@@ -208,15 +212,15 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
              * 60 minutes per hour : 360/60 = 6
              * 12 hours per turn : 360/12 = 30
              */
-            final float secondsAngle = time.second * 6f;
-            final float minutesAngle = time.minute * 6f;
-            final float hourAngle = (time.hour + time.minute / 60f) * 30f;
+            final float secondsAngle = calendar.get(Calendar.SECOND) * 6f;
+            final float minutesAngle = calendar.get(Calendar.MINUTE) * 6f;
+            final float hourAngle = (calendar.get(Calendar.HOUR) + calendar.get(Calendar.MINUTE) / 60f) * 30f;
 
-            for(int i=0;i<=11;i++){
+            for (int i = 0; i <= 11; i++) {
                 canvas.save();
                 {
-                    canvas.rotate(360/12*i, centerX, centerY);
-                    canvas.drawRect(centerX - 1, height*0.85f,centerX+1,height*0.9f,handPaintSeconds);
+                    canvas.rotate(360 / 12 * i, centerX, centerY);
+                    canvas.drawRect(centerX - 1, height * 0.85f, centerX + 1, height * 0.9f, handPaintSeconds);
                 }
                 canvas.restore();
             }
@@ -243,9 +247,20 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             canvas.restore();
             //endregion
         }
-    }
 
-    @Override public Engine onCreateEngine() {
-        return new CadranEngine();
+        protected void drawHand(Canvas canvas, float height, float width, Paint paint) {
+            float left = centerX - width;
+            float right = centerX + width;
+            float top = centerY - height;
+            float bottom = centerY + width;
+            canvas.drawRoundRect(left, top, right, bottom, width, width, paint);
+        }
+
+        private void updateTimer() {
+            updateHandler.removeMessages(R.id.message_update);
+            if (isRunning) {
+                updateHandler.sendEmptyMessage(R.id.message_update);
+            }
+        }
     }
 }
