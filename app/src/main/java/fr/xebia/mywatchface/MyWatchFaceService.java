@@ -33,49 +33,6 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
 
     protected class MyEngine extends CanvasWatchFaceService.Engine {
         protected Calendar calendar;
-
-        boolean isRunning = false;
-        Handler updateHandler = new Handler() {
-            @Override public void handleMessage(Message msg) {
-                if (msg.what == R.id.message_update) {
-                    invalidate();
-                    if (isRunning) {
-                        long timeMs = System.currentTimeMillis();
-                        long delayMs = UPDATE_RATE_MS - (timeMs % UPDATE_RATE_MS); //force to be exactly at the next second
-
-                        updateHandler.sendEmptyMessageDelayed(R.id.message_update, delayMs);
-                    }
-                }
-            }
-        };
-
-        //region background
-        protected Paint backgroundPaint;
-        protected Bitmap backgroundBitmap;
-        protected int colorBackground;
-        protected float backgroundScale;
-        //endregion
-
-        //region surface
-        protected int width, height;
-        protected float centerX, centerY;
-        //endregion
-
-        //region hands
-        Paint handPaintHours;
-        Paint handPaintMinutes;
-        Paint handPaintSeconds;
-
-        float HAND_WIDTH_HOURS = 4f;
-        float HAND_WIDTH_MINUTES = 2f;
-        float HAND_WIDTH_SECONDS = 1f;
-
-        float handHourHeight;
-        float handMinuteHeight;
-        float handSecondHeight;
-        //endregion
-
-        boolean registeredTimeZoneReceiver;
         // receiver to update the time zone
         final BroadcastReceiver timeZoneReceiver = new BroadcastReceiver() {
             @Override
@@ -84,6 +41,43 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
                 invalidate();
             }
         };
+        //region background
+        protected Paint backgroundPaint;
+        protected Bitmap backgroundBitmap;
+        protected int colorBackground;
+        protected float backgroundScale;
+        //region surface
+        protected int width, height;
+        //endregion
+        protected float centerX, centerY;
+        boolean isRunning = false;
+        //endregion
+        Handler updateHandler = new Handler() {
+            @Override public void handleMessage(Message msg) {
+                if (msg.what == R.id.message_update) {
+                    invalidate();
+                    if (isRunning && !ambiant) {
+                        long timeMs = System.currentTimeMillis();
+                        long delayMs = UPDATE_RATE_MS - (timeMs % UPDATE_RATE_MS); //force to be exactly at the next second
+
+                        updateHandler.sendEmptyMessageDelayed(R.id.message_update, delayMs);
+                    }
+                }
+            }
+        };
+        //region hands
+        Paint handPaintHours;
+        Paint handPaintMinutes;
+        Paint handPaintSeconds;
+        float HAND_WIDTH_HOURS = 4f;
+        float HAND_WIDTH_MINUTES = 2f;
+        float HAND_WIDTH_SECONDS = 1f;
+        float handHourHeight;
+        float handMinuteHeight;
+        //endregion
+        float handSecondHeight;
+        boolean registeredTimeZoneReceiver;
+        boolean ambiant;
 
         @Override public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
@@ -182,6 +176,22 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             }
         }
 
+        @Override public void onAmbientModeChanged(boolean inAmbientMode) {
+            super.onAmbientModeChanged(inAmbientMode);
+
+            this.ambiant = inAmbientMode;
+
+            this.backgroundPaint.setAntiAlias(!ambiant);
+            this.handPaintHours.setAntiAlias(!ambiant);
+            this.handPaintMinutes.setAntiAlias(!ambiant);
+            this.handPaintSeconds.setAntiAlias(!ambiant);
+
+            if(!ambiant){
+                isRunning = true;
+                updateTimer();
+            }
+        }
+
         private void registerReceiver() {
             if (!registeredTimeZoneReceiver) {
                 registeredTimeZoneReceiver = true;
@@ -201,8 +211,12 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             calendar.setTimeInMillis(System.currentTimeMillis());
 
             //region background
-            canvas.drawBitmap(this.backgroundBitmap, 0, 0, backgroundPaint);
-            canvas.drawColor(colorBackground);
+            if(ambiant)
+                canvas.drawColor(Color.BLACK);
+            else{
+                canvas.drawBitmap(this.backgroundBitmap, 0, 0, backgroundPaint);
+                canvas.drawColor(colorBackground);
+            }
             //endregion
 
             //region hand
@@ -216,13 +230,15 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             final float minutesAngle = calendar.get(Calendar.MINUTE) * 6f;
             final float hourAngle = (calendar.get(Calendar.HOUR) + calendar.get(Calendar.MINUTE) / 60f) * 30f;
 
-            for (int i = 0; i <= 11; i++) {
-                canvas.save();
-                {
-                    canvas.rotate(360 / 12 * i, centerX, centerY);
-                    canvas.drawRect(centerX - 1, height * 0.85f, centerX + 1, height * 0.9f, handPaintSeconds);
+            if (!ambiant) {
+                for (int i = 0; i <= 11; i++) {
+                    canvas.save();
+                    {
+                        canvas.rotate(360 / 12 * i, centerX, centerY);
+                        canvas.drawRect(centerX - 1, height * 0.85f, centerX + 1, height * 0.9f, handPaintSeconds);
+                    }
+                    canvas.restore();
                 }
-                canvas.restore();
             }
 
             canvas.save();
@@ -239,12 +255,14 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             }
             canvas.restore();
 
-            canvas.save();
-            {
-                canvas.rotate(secondsAngle, centerX, centerY);
-                drawHand(canvas, handSecondHeight, HAND_WIDTH_SECONDS, handPaintSeconds);
+            if (!ambiant) {
+                canvas.save();
+                {
+                    canvas.rotate(secondsAngle, centerX, centerY);
+                    drawHand(canvas, handSecondHeight, HAND_WIDTH_SECONDS, handPaintSeconds);
+                }
+                canvas.restore();
             }
-            canvas.restore();
             //endregion
         }
 
