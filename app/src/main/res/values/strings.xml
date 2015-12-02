@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">MyWatchFace</string>
+    <string name="configuration">Configuration</string>
+    <string name="config_name">Configuration</string>
 </resources>
