@@ -74,8 +74,8 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
         float HAND_WIDTH_SECONDS = 1f;
         float handHourHeight;
         float handMinuteHeight;
-        //endregion
         float handSecondHeight;
+        //endregion
         boolean registeredTimeZoneReceiver;
         boolean ambiant;
 
@@ -159,6 +159,11 @@ public class MyWatchFaceService extends CanvasWatchFaceService {
             super.onTimeTick();
             invalidate();
         }
+
+        //@Override public void onApplyWindowInsets(WindowInsets insets) {
+        //    super.onApplyWindowInsets(insets);
+        //    boolean isRound = insets.isRound();
+        //}
 
         @Override public void onVisibilityChanged(boolean visible) {
             super.onVisibilityChanged(visible);
