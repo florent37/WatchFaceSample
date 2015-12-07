@@ -1,0 +1,70 @@
+static final long UPDATE_RATE_MS = 1000; //each second
+
+Handler updateHandler = new Handler() {
+            @Override public void handleMessage(Message msg) {
+                if (msg.what == R.id.message_update) {
+                    invalidate();
+                    if (isRunning && !ambiant) {
+                        long timeMs = System.currentTimeMillis();
+                        long delayMs = UPDATE_RATE_MS - (timeMs % UPDATE_RATE_MS); //force to be exactly at the next second
+
+                        updateHandler.sendEmptyMessageDelayed(R.id.message_update, delayMs);
+                    }
+                }
+            }
+        };
+
+float HAND_WIDTH_HOURS = 4f;
+float HAND_WIDTH_MINUTES = 2f;
+float HAND_WIDTH_SECONDS = 1f;
+
+
+
+setWatchFaceStyle(new WatchFaceStyle.Builder(MyWatchFaceService.this)
+                    .setCardPeekMode(WatchFaceStyle.PEEK_MODE_SHORT)
+                    .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
+                    .setShowSystemUiTime(false)
+                    .build());
+
+
+
+calendar.setTimeInMillis(System.currentTimeMillis());
+
+
+
+
+/**
+ * 60 seconds per minute : 360/60 = 6
+ * 60 minutes per hour : 360/60 = 6
+ * 12 hours per turn : 360/12 = 30
+ */
+final float secondsAngle = calendar.get(Calendar.SECOND) * 6f;
+final float minutesAngle = calendar.get(Calendar.MINUTE) * 6f;
+final float hourAngle = (calendar.get(Calendar.HOUR) + calendar.get(Calendar.MINUTE) / 60f) * 30f;
+
+
+
+protected void drawHand(Canvas canvas, float height, float width, Paint paint) {
+    float left = centerX - width;
+    float right = centerX + width;
+    float top = centerY - height;
+    float bottom = centerY + width;
+    canvas.drawRoundRect(left, top, right, bottom, width, width, paint);
+}
+
+@Override public void onTimeTick() {
+    super.onTimeTick();
+    invalidate();
+}
+
+
+//dessiner les ticks
+
+for (int i = 0; i <= 11; i++) {
+    canvas.save();
+    {
+        canvas.rotate(360 / 12 * i, centerX, centerY);
+        canvas.drawRect(centerX - 1, height * 0.85f, centerX + 1, height * 0.9f, handPaintSeconds);
+    }
+    canvas.restore();
+}
