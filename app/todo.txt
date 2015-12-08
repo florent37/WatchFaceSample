@@ -1,3 +1,10 @@
+this.backgroundScale = ((float) (width)) / (float) backgroundBitmap.getWidth();
+            this.backgroundBitmap = Bitmap.createScaledBitmap(this.backgroundBitmap,
+                    (int) (backgroundScale * (this.backgroundBitmap.getWidth())),
+                    (int) (backgroundScale * (this.backgroundBitmap.getHeight())),
+                    true);
+
+
 static final long UPDATE_RATE_MS = 1000; //each second
 
 Handler updateHandler = new Handler() {
@@ -68,3 +75,7 @@ for (int i = 0; i <= 11; i++) {
     }
     canvas.restore();
 }
+
+
+
+paint.setShadowLayer(6f, 0, 0, Color.BLACK);
